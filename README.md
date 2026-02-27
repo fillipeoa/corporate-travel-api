@@ -40,7 +40,15 @@ Isso irá iniciar 3 serviços:
 
 > **Nota:** Se a porta `8080` já estiver em uso, altere o mapeamento em `docker-compose.yml` (ex: `"8081:80"`).
 
-### 4. Verificar se está funcionando
+### 4. Instalar dependências e configurar a aplicação
+
+```bash
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
+```
+
+### 5. Verificar se está funcionando
 
 ```bash
 curl http://localhost:8080/up
