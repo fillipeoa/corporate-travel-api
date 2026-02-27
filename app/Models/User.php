@@ -53,6 +53,7 @@ class User extends Authenticatable
     /**
      * Get the travel orders for the user.
      */
+    /** @return HasMany<TravelOrder, $this> */
     public function travelOrders(): HasMany
     {
         return $this->hasMany(TravelOrder::class);

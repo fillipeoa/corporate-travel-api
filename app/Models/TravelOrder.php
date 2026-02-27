@@ -42,6 +42,7 @@ class TravelOrder extends Model
     /**
      * Get the user that owns the travel order.
      */
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

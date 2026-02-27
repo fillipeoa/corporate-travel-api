@@ -16,6 +16,7 @@ class TravelOrderService
      * Regular users see only their own; admins see all.
      *
      * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, TravelOrder>
      */
     public function list(User $user, array $filters): LengthAwarePaginator
     {
@@ -37,6 +38,7 @@ class TravelOrderService
      */
     public function create(User $user, array $data): TravelOrder
     {
+        /** @var TravelOrder $travelOrder */
         $travelOrder = $user->travelOrders()->create([
             'destination' => $data['destination'],
             'departure_date' => $data['departure_date'],

@@ -12,7 +12,10 @@ class SendTravelOrderNotification
      */
     public function handle(TravelOrderStatusUpdated $event): void
     {
-        $event->travelOrder->user->notify(
+        /** @var \App\Models\User $user */
+        $user = $event->travelOrder->user;
+
+        $user->notify(
             new TravelOrderStatusChanged($event->travelOrder),
         );
     }
