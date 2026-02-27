@@ -52,6 +52,14 @@ class TravelOrderController extends Controller
             $query->where('return_date', '<=', $request->validated('return_to'));
         }
 
+        if ($request->filled('created_from')) {
+            $query->where('created_at', '>=', $request->validated('created_from'));
+        }
+
+        if ($request->filled('created_to')) {
+            $query->where('created_at', '<=', $request->validated('created_to').' 23:59:59');
+        }
+
         $orders = $query->latest()->paginate(15);
 
         return TravelOrderResource::collection($orders);
@@ -109,6 +117,21 @@ class TravelOrderController extends Controller
         $travelOrder->load('user');
 
         $travelOrder->user->notify(new TravelOrderStatusChanged($travelOrder));
+
+        return (new TravelOrderResource($travelOrder))
+            ->response()
+            ->setStatusCode(200);
+    }
+
+    /**
+     * Cancel a travel order (by the requester).
+     */
+    public function cancel(TravelOrder $travelOrder): JsonResponse
+    {
+        Gate::authorize('cancel', $travelOrder);
+
+        $travelOrder->update(['status' => TravelOrderStatus::Cancelled]);
+        $travelOrder->load('user');
 
         return (new TravelOrderResource($travelOrder))
             ->response()

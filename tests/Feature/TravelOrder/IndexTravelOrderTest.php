@@ -95,6 +95,29 @@ class IndexTravelOrderTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
+    public function test_filter_by_created_date_range(): void
+    {
+        $user = User::factory()->create();
+
+        $oldOrder = TravelOrder::factory()->for($user)->create([
+            'departure_date' => '2026-05-01',
+            'return_date' => '2026-05-10',
+        ]);
+        $oldOrder->update(['created_at' => '2026-01-15 10:00:00']);
+
+        TravelOrder::factory()->for($user)->create([
+            'departure_date' => '2026-05-15',
+            'return_date' => '2026-05-25',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/v1/travel-orders?created_from=2026-02-01&created_to=2026-12-31');
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
     public function test_index_fails_without_authentication(): void
     {
         $response = $this->getJson('/api/v1/travel-orders');

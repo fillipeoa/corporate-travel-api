@@ -30,6 +30,8 @@ class IndexTravelOrderRequest extends FormRequest
             'departure_to' => ['sometimes', 'date', 'after_or_equal:departure_from'],
             'return_from' => ['sometimes', 'date'],
             'return_to' => ['sometimes', 'date', 'after_or_equal:return_from'],
+            'created_from' => ['sometimes', 'date'],
+            'created_to' => ['sometimes', 'date', 'after_or_equal:created_from'],
         ];
     }
 }

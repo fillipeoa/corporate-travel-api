@@ -20,6 +20,7 @@
 /storage/pail
 /vendor
 /.composer
+/.config
 Homestead.json
 Homestead.yaml
 Thumbs.db
