@@ -3,10 +3,10 @@
 namespace App\Services;
 
 use App\Enums\TravelOrderStatus;
+use App\Events\TravelOrderStatusUpdated;
 use App\Exceptions\TravelOrderAlreadyApprovedException;
 use App\Models\TravelOrder;
 use App\Models\User;
-use App\Notifications\TravelOrderStatusChanged;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class TravelOrderService
@@ -63,7 +63,7 @@ class TravelOrderService
         $travelOrder->update(['status' => $newStatus]);
         $travelOrder->load('user');
 
-        $travelOrder->user->notify(new TravelOrderStatusChanged($travelOrder));
+        TravelOrderStatusUpdated::dispatch($travelOrder);
 
         return $travelOrder;
     }
