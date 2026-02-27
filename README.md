@@ -67,3 +67,17 @@ Deve retornar **HTTP 200** confirmando que a aplicação está online.
 | `DB_USERNAME` | Usuário do banco | `laravel` |
 | `DB_PASSWORD` | Senha do banco | `secret` |
 
+## Executar os Testes
+
+Os testes utilizam **SQLite em memória**, sem depender do MySQL:
+
+```bash
+# Rodar todos os testes
+docker compose exec app php artisan test
+
+# Rodar testes de um diretório específico
+docker compose exec app php artisan test tests/Feature/Auth/
+
+# Filtrar por nome do teste
+docker compose exec app php artisan test --filter=test_user_can_register_with_valid_data
+```
