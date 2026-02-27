@@ -21,6 +21,14 @@
 /vendor
 /.composer
 /.config
+/.cursor
+AGENTS.md
+boost.json
+vite.config.js
+package.json
+package-lock.json
+resources/css
+resources/js
 Homestead.json
 Homestead.yaml
 Thumbs.db
