@@ -9,6 +9,7 @@ use App\Http\Requests\TravelOrder\StoreTravelOrderRequest;
 use App\Http\Requests\TravelOrder\UpdateTravelOrderStatusRequest;
 use App\Http\Resources\TravelOrderResource;
 use App\Models\TravelOrder;
+use App\Notifications\TravelOrderStatusChanged;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
@@ -106,6 +107,8 @@ class TravelOrderController extends Controller
 
         $travelOrder->update(['status' => $newStatus]);
         $travelOrder->load('user');
+
+        $travelOrder->user->notify(new TravelOrderStatusChanged($travelOrder));
 
         return (new TravelOrderResource($travelOrder))
             ->response()
