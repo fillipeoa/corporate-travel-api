@@ -9,58 +9,26 @@ use App\Http\Requests\TravelOrder\StoreTravelOrderRequest;
 use App\Http\Requests\TravelOrder\UpdateTravelOrderStatusRequest;
 use App\Http\Resources\TravelOrderResource;
 use App\Models\TravelOrder;
-use App\Notifications\TravelOrderStatusChanged;
+use App\Services\TravelOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
 
 class TravelOrderController extends Controller
 {
+    public function __construct(
+        private readonly TravelOrderService $travelOrderService,
+    ) {}
+
     /**
      * List travel orders with optional filters.
-     * Regular users see only their own orders; admins see all.
      */
     public function index(IndexTravelOrderRequest $request): AnonymousResourceCollection
     {
-        $query = TravelOrder::query()->with('user');
-
-        if (! $request->user()->is_admin) {
-            $query->where('user_id', $request->user()->id);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->validated('status'));
-        }
-
-        if ($request->filled('destination')) {
-            $query->where('destination', 'like', '%'.$request->validated('destination').'%');
-        }
-
-        if ($request->filled('departure_from')) {
-            $query->where('departure_date', '>=', $request->validated('departure_from'));
-        }
-
-        if ($request->filled('departure_to')) {
-            $query->where('departure_date', '<=', $request->validated('departure_to'));
-        }
-
-        if ($request->filled('return_from')) {
-            $query->where('return_date', '>=', $request->validated('return_from'));
-        }
-
-        if ($request->filled('return_to')) {
-            $query->where('return_date', '<=', $request->validated('return_to'));
-        }
-
-        if ($request->filled('created_from')) {
-            $query->where('created_at', '>=', $request->validated('created_from'));
-        }
-
-        if ($request->filled('created_to')) {
-            $query->where('created_at', '<=', $request->validated('created_to').' 23:59:59');
-        }
-
-        $orders = $query->latest()->paginate(15);
+        $orders = $this->travelOrderService->list(
+            $request->user(),
+            $request->validated(),
+        );
 
         return TravelOrderResource::collection($orders);
     }
@@ -72,14 +40,10 @@ class TravelOrderController extends Controller
     {
         Gate::authorize('create', TravelOrder::class);
 
-        $travelOrder = $request->user()->travelOrders()->create([
-            'destination' => $request->validated('destination'),
-            'departure_date' => $request->validated('departure_date'),
-            'return_date' => $request->validated('return_date'),
-            'status' => TravelOrderStatus::Requested,
-        ]);
-
-        $travelOrder->load('user');
+        $travelOrder = $this->travelOrderService->create(
+            $request->user(),
+            $request->validated(),
+        );
 
         return (new TravelOrderResource($travelOrder))
             ->response()
@@ -99,24 +63,16 @@ class TravelOrderController extends Controller
     }
 
     /**
-     * Update the status of a travel order.
+     * Update the status of a travel order (admin action).
      */
     public function updateStatus(UpdateTravelOrderStatusRequest $request, TravelOrder $travelOrder): JsonResponse
     {
         Gate::authorize('updateStatus', $travelOrder);
 
-        $newStatus = TravelOrderStatus::from($request->validated('status'));
-
-        if ($newStatus === TravelOrderStatus::Cancelled && $travelOrder->status === TravelOrderStatus::Approved) {
-            return response()->json([
-                'message' => 'Cannot cancel a travel order that has already been approved.',
-            ], 422);
-        }
-
-        $travelOrder->update(['status' => $newStatus]);
-        $travelOrder->load('user');
-
-        $travelOrder->user->notify(new TravelOrderStatusChanged($travelOrder));
+        $travelOrder = $this->travelOrderService->updateStatus(
+            $travelOrder,
+            TravelOrderStatus::from($request->validated('status')),
+        );
 
         return (new TravelOrderResource($travelOrder))
             ->response()
@@ -124,14 +80,13 @@ class TravelOrderController extends Controller
     }
 
     /**
-     * Cancel a travel order (by the requester).
+     * Cancel a travel order (requester action).
      */
     public function cancel(TravelOrder $travelOrder): JsonResponse
     {
         Gate::authorize('cancel', $travelOrder);
 
-        $travelOrder->update(['status' => TravelOrderStatus::Cancelled]);
-        $travelOrder->load('user');
+        $travelOrder = $this->travelOrderService->cancel($travelOrder);
 
         return (new TravelOrderResource($travelOrder))
             ->response()
