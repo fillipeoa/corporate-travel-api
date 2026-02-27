@@ -8,6 +8,8 @@ use App\Exceptions\TravelOrderAlreadyApprovedException;
 use App\Models\TravelOrder;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TravelOrderService
 {
@@ -62,12 +64,20 @@ class TravelOrderService
             throw new TravelOrderAlreadyApprovedException;
         }
 
-        $travelOrder->update(['status' => $newStatus]);
-        $travelOrder->load('user');
+        return DB::transaction(function () use ($travelOrder, $newStatus): TravelOrder {
+            $travelOrder->update(['status' => $newStatus]);
+            $travelOrder->load('user');
 
-        TravelOrderStatusUpdated::dispatch($travelOrder);
+            TravelOrderStatusUpdated::dispatch($travelOrder);
 
-        return $travelOrder;
+            Log::info('Travel order status updated', [
+                'order_id' => $travelOrder->id,
+                'new_status' => $newStatus->value,
+                'admin_id' => auth()->id(),
+            ]);
+
+            return $travelOrder;
+        });
     }
 
     /**
@@ -77,6 +87,11 @@ class TravelOrderService
     {
         $travelOrder->update(['status' => TravelOrderStatus::Cancelled]);
         $travelOrder->load('user');
+
+        Log::info('Travel order cancelled by requester', [
+            'order_id' => $travelOrder->id,
+            'user_id' => $travelOrder->user_id,
+        ]);
 
         return $travelOrder;
     }
