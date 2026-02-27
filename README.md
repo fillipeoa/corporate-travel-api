@@ -94,6 +94,7 @@ Base URL: `http://localhost:8080/api/v1`
 | `POST` | `/travel-orders` | Criar novo pedido | Sim |
 | `GET` | `/travel-orders/{id}` | Consultar pedido | Sim |
 | `PATCH` | `/travel-orders/{id}/status` | Atualizar status | Sim (admin) |
+| `PATCH` | `/travel-orders/{id}/cancel` | Cancelar pedido | Sim (solicitante) |
 
 ### Autenticação nas requisições
 
@@ -113,15 +114,18 @@ Authorization: Bearer {seu-token}
 | `departure_to` | date | Data máxima de ida (YYYY-MM-DD) |
 | `return_from` | date | Data mínima de volta (YYYY-MM-DD) |
 | `return_to` | date | Data máxima de volta (YYYY-MM-DD) |
+| `created_from` | date | Data mínima de criação do pedido (YYYY-MM-DD) |
+| `created_to` | date | Data máxima de criação do pedido (YYYY-MM-DD) |
 
 ### Regras de Negócio
 
 - O status de um novo pedido é sempre `requested`.
-- Apenas um **administrador** pode alterar o status de um pedido.
+- O **solicitante** pode cancelar seu próprio pedido, desde que ainda esteja em `requested`.
+- Apenas um **administrador** pode aprovar ou cancelar pedidos de outros usuários.
 - O administrador **não pode** alterar o status de seus próprios pedidos.
 - Não é possível **cancelar** um pedido que já foi **aprovado**.
 - Cada usuário visualiza apenas seus **próprios pedidos** (admin vê todos).
-- O solicitante recebe uma **notificação** (email + banco) quando seu pedido é aprovado ou cancelado.
+- O solicitante recebe uma **notificação** (email + banco) quando seu pedido é aprovado ou cancelado por um admin.
 
 ## Variáveis de Ambiente
 

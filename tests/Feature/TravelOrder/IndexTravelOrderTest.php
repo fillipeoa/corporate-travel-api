@@ -99,11 +99,14 @@ class IndexTravelOrderTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $oldOrder = TravelOrder::factory()->for($user)->create([
+        $this->travel(-30)->days();
+
+        TravelOrder::factory()->for($user)->create([
             'departure_date' => '2026-05-01',
             'return_date' => '2026-05-10',
         ]);
-        $oldOrder->update(['created_at' => '2026-01-15 10:00:00']);
+
+        $this->travelBack();
 
         TravelOrder::factory()->for($user)->create([
             'departure_date' => '2026-05-15',
@@ -112,7 +115,8 @@ class IndexTravelOrderTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $response = $this->getJson('/api/v1/travel-orders?created_from=2026-02-01&created_to=2026-12-31');
+        $today = now()->format('Y-m-d');
+        $response = $this->getJson("/api/v1/travel-orders?created_from={$today}&created_to={$today}");
 
         $response->assertOk()
             ->assertJsonCount(1, 'data');
