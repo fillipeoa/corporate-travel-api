@@ -4,12 +4,18 @@ Microsserviço em **Laravel 12** para gerenciamento de pedidos de viagem corpora
 
 ## Decisões Técnicas
 
-- **Laravel Sanctum** para autenticação via tokens Bearer — solução oficial do ecossistema Laravel, leve e sem dependências externas.
+- **Service Layer** — lógica de negócio isolada em `TravelOrderService`.
+- **Events + Listeners** — notificações desacopladas via `TravelOrderStatusUpdated` event (padrão Observer).
+- **Laravel Sanctum** para autenticação via tokens Bearer — solução oficial, leve e sem dependências externas.
 - **Enum PHP 8** (`TravelOrderStatus`) para status do pedido — type-safety e validação nativa.
 - **Form Requests** para validação — desacoplamento do controller, reutilização e mensagens customizadas.
-- **Policies** para autorização — controle granular por recurso (view, create, updateStatus).
+- **Policies** para autorização — controle granular por recurso (view, create, updateStatus, cancel).
 - **API Resources** para serialização — formato de resposta padronizado e consistente.
-- **Notifications (mail + database)** — o solicitante é notificado automaticamente quando seu pedido é aprovado ou cancelado.
+- **Custom Exceptions** — `TravelOrderAlreadyApprovedException` para regras de negócio claras.
+- **DB Transactions** — atomicidade nas operações de mudança de status.
+- **Rate Limiting** — rotas de autenticação protegidas contra brute-force (`throttle:5,1`).
+- **PHPStan (Larastan)** — análise estática nível 6 para type-safety.
+- **GitHub Actions CI** — pipeline com Pint (lint), PHPStan (análise) e PHPUnit (testes).
 - **Docker** (PHP 8.4-FPM + Nginx + MySQL 8) — ambiente reproduzível.
 
 ## Pré-requisitos
@@ -48,8 +54,6 @@ Isso irá iniciar 3 serviços:
 | Nginx | `corporate-travel-webserver` | **8080** → 80 |
 | MySQL 8 | `corporate-travel-db` | **3307** → 3306 |
 
-> **Nota:** Se a porta `8080` já estiver em uso, altere o mapeamento em `docker-compose.yml` (ex: `"8081:80"`).
-
 ### 4. Instalar dependências e configurar a aplicação
 
 ```bash
@@ -71,8 +75,6 @@ Cria um usuário regular (`user@example.com`), um admin (`admin@example.com`) e 
 ```bash
 curl http://localhost:8080/up
 ```
-
-Deve retornar **HTTP 200** confirmando que a aplicação está online.
 
 ## Endpoints da API
 
@@ -102,6 +104,53 @@ Inclua o token no header `Authorization`:
 
 ```
 Authorization: Bearer {seu-token}
+```
+
+### Exemplos de Uso
+
+**Registrar usuário:**
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"João Silva","email":"joao@example.com","password":"secret123","password_confirmation":"secret123"}'
+```
+
+```json
+{"user":{"name":"João Silva","email":"joao@example.com","id":1},"token":"1|abc..."}
+```
+
+**Criar pedido de viagem:**
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/travel-orders \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"destination":"São Paulo","departure_date":"2026-04-01","return_date":"2026-04-05"}'
+```
+
+```json
+{
+  "data": {
+    "id": 1,
+    "requester": {"id": 1, "name": "João Silva"},
+    "destination": "São Paulo",
+    "departure_date": "2026-04-01",
+    "return_date": "2026-04-05",
+    "status": "requested",
+    "created_at": "2026-02-27T21:00:00.000000Z",
+    "updated_at": "2026-02-27T21:00:00.000000Z"
+  }
+}
+```
+
+**Aprovar pedido (admin):**
+
+```bash
+curl -s -X PATCH http://localhost:8080/api/v1/travel-orders/1/status \
+  -H "Authorization: Bearer {admin-token}" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"approved"}'
 ```
 
 ### Filtros disponíveis (GET /travel-orders)
@@ -149,9 +198,16 @@ docker compose exec app php artisan test
 # Rodar testes de um diretório específico
 docker compose exec app php artisan test tests/Feature/Auth/
 docker compose exec app php artisan test tests/Feature/TravelOrder/
+```
 
-# Filtrar por nome do teste
-docker compose exec app php artisan test --filter=test_user_can_register_with_valid_data
+## Qualidade de Código
+
+```bash
+# Análise estática (PHPStan nível 6)
+docker compose exec app vendor/bin/phpstan analyse
+
+# Formatação (Laravel Pint)
+docker compose exec app vendor/bin/pint
 ```
 
 ## Estrutura do Projeto
@@ -159,13 +215,17 @@ docker compose exec app php artisan test --filter=test_user_can_register_with_va
 ```
 ├── app/
 │   ├── Enums/                  # TravelOrderStatus (requested, approved, cancelled)
+│   ├── Events/                 # TravelOrderStatusUpdated
+│   ├── Exceptions/             # TravelOrderAlreadyApprovedException
 │   ├── Http/
 │   │   ├── Controllers/Api/V1/ # AuthController, TravelOrderController
 │   │   ├── Requests/           # Form Requests (Auth, TravelOrder)
 │   │   └── Resources/          # TravelOrderResource
+│   ├── Listeners/              # SendTravelOrderNotification
 │   ├── Models/                 # User, TravelOrder
 │   ├── Notifications/          # TravelOrderStatusChanged
-│   └── Policies/               # TravelOrderPolicy
+│   ├── Policies/               # TravelOrderPolicy
+│   └── Services/               # TravelOrderService
 ├── database/
 │   ├── factories/              # UserFactory, TravelOrderFactory
 │   ├── migrations/             # Todas as migrations
@@ -176,7 +236,9 @@ docker compose exec app php artisan test --filter=test_user_can_register_with_va
 │   └── api.php                 # Rotas da API (v1)
 ├── tests/Feature/
 │   ├── Auth/                   # RegisterTest, LoginTest
-│   └── TravelOrder/            # Create, Show, Index, UpdateStatus, Notification
+│   └── TravelOrder/            # Create, Show, Index, UpdateStatus, Cancel, Notification
+├── .github/workflows/ci.yml   # CI: lint + phpstan + testes
+├── phpstan.neon                # Configuração do PHPStan (nível 6)
 ├── Dockerfile
 ├── docker-compose.yml
 └── README.md
@@ -196,7 +258,4 @@ docker compose down
 
 # Parar e remover volumes (reset do banco)
 docker compose down -v
-
-# Formatar código com Laravel Pint
-docker compose exec app vendor/bin/pint
 ```
