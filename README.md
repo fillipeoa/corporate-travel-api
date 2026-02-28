@@ -198,7 +198,9 @@ Os testes utilizam **SQLite em memória**, sem depender do MySQL.
 | **Unit** | 6 | `TravelOrderService` isolado (create, updateStatus, cancel, list scoping) |
 | **Feature** | 44 | Integração HTTP: auth, CRUD, policies, notifications, filtros |
 | **E2E** | 1 | Jornada completa: register → login → create → list → approve → notification |
-| **Total** | **51 testes, 135 assertions** | |
+| **Total** | **51 testes, 135 assertions** | **98.6% de cobertura** |
+
+> O CI exige cobertura mínima de **80%** (`--coverage --min=80`). Localmente, é necessário a extensão `pcov` (já incluída no Dockerfile).
 
 ### Executar
 
