@@ -187,17 +187,30 @@ curl -s -X PATCH http://localhost:8080/api/v1/travel-orders/1/status \
 | `DB_USERNAME` | Usuário do banco | `laravel` |
 | `DB_PASSWORD` | Senha do banco | `secret` |
 
-## Executar os Testes
+## Testes
 
-Os testes utilizam **SQLite em memória**, sem depender do MySQL:
+Os testes utilizam **SQLite em memória**, sem depender do MySQL.
+
+### Pirâmide de Testes
+
+| Camada | Qtd | O que valida |
+|--------|-----|-------------|
+| **Unit** | 6 | `TravelOrderService` isolado (create, updateStatus, cancel, list scoping) |
+| **Feature** | 44 | Integração HTTP: auth, CRUD, policies, notifications, filtros |
+| **E2E** | 1 | Jornada completa: register → login → create → list → approve → notification |
+| **Total** | **51 testes, 135 assertions** | |
+
+### Executar
 
 ```bash
-# Rodar todos os testes
+# Todos os testes
 docker compose exec app php artisan test
 
-# Rodar testes de um diretório específico
-docker compose exec app php artisan test tests/Feature/Auth/
-docker compose exec app php artisan test tests/Feature/TravelOrder/
+# Apenas Unit
+docker compose exec app php artisan test --testsuite=Unit
+
+# Apenas Feature
+docker compose exec app php artisan test --testsuite=Feature
 ```
 
 ## Qualidade de Código
@@ -234,9 +247,12 @@ docker compose exec app vendor/bin/pint
 │   └── nginx/                  # Configuração do Nginx
 ├── routes/
 │   └── api.php                 # Rotas da API (v1)
-├── tests/Feature/
-│   ├── Auth/                   # RegisterTest, LoginTest
-│   └── TravelOrder/            # Create, Show, Index, UpdateStatus, Cancel, Notification
+├── tests/
+│   ├── Unit/Services/          # TravelOrderServiceTest
+│   └── Feature/
+│       ├── Auth/               # RegisterTest, LoginTest
+│       ├── TravelOrder/        # Create, Show, Index, UpdateStatus, Cancel, Notification
+│       └── TravelOrderLifecycleTest.php  # E2E flow test
 ├── .github/workflows/ci.yml   # CI: lint + phpstan + testes
 ├── phpstan.neon                # Configuração do PHPStan (nível 6)
 ├── Dockerfile
